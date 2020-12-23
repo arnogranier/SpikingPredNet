@@ -1,5 +1,5 @@
 import brian2 as b2 
-from neuron_model import C, gL, taum, EL, VT, DeltaT, Vcut
+from neuron_model import C, gL, EL, VT, DeltaT, Vcut
 from neuron_model import neurons
 import numpy as np 
 

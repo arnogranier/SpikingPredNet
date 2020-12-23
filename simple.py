@@ -2,37 +2,34 @@ import brian2 as b2
 import brian2genn 
 b2.set_device('genn')
 import numpy as np 
+import matplotlib.pyplot as plt 
 
-from neuron_model import neurons, C, gL, taum, EL, VT, DeltaT, Vcut
-from plots import raster_plot
+from neuron_model import C, gL, EL, VT, DeltaT, Vcut
+from neuron_model import neurons, synapses
+from plots import rplots, vplots
+from area import Area, connect 
 
-hIR = neurons(2, name='hIR')
-interhIRlocal = neurons(2, name='interhIRlocal')
-interhIRglobal = neurons(1, name='interhIRglobal')
-lPPE = neurons(5, name='lPPE')
-interlPPE = neurons(5, name='interlPPE')
-lNPE = neurons(5, name='lNPE')
-interlNPE = neurons(5, name='interlNPE')
-SetRates = b2.TimedArray(np.tile(np.array([[80, 0, 80, 0, 80], [0, 80, 80, 80, 0]]), (10,1))*b2.Hz, dt=1000.*b2.ms)
-lIR = b2.NeuronGroup(5, 'rates : Hz', threshold='rand()<rates*dt', name='lIR')
-lIR.run_regularly('rates = SetRates(t,i)', 1000*b2.ms)
+def exp1():
+    activationLOW = np.array([[0, 0, 1], [0, 0, 1], [1, 0, 1], [0, 1, 0]])
+    activationHIGH = np.array([[0, 1], [1, 0], [0, 1], [0, 1]])
+    timedRatesLOW = b2.TimedArray(65*activationLOW*b2.Hz, dt=1*b2.second)
+    timedRatesHIGH = b2.TimedArray(65*activationHIGH*b2.Hz, dt=1*b2.second)
+    net = b2.Network()
+    wINHIPE, wEXCIPE = -20, 12
+    W = np.array([[1, 0, 1], 
+                  [0, 1, 1]])
+    LOW = Area(3, 'LOW', net, wINHIPE, wEXCIPE, IRPoisson=True, recordspikes=True)
+    HIGH = Area(2, 'HIGH', net, wINHIPE, wEXCIPE, IRPoisson=True, recordspikes=True)
+    LOW.set_rates('timedRatesLOW')
+    HIGH.set_rates('timedRatesHIGH') # putting the var names here can seem a little off putting
+                                     # and not really scalable to larger projects, but it's
+                                     # simply a workaround because b2genn does not support
+                                     # b2.TimedArray as model variables
+    connect(HIGH, LOW, W, wEXCIPE)
+    net.run(4*b2.second)
+    rplots(LOW['IR'], HIGH['IR'], LOW['PPE'], LOW['NPE'])
+    plt.show()
 
-W = np.array([[1, 0, 1, 0, 1],
-              [0, 1, 1, 1, 0]])
-sources, targets = W.nonzero()
-shIRhIR = b2.Synapses(hIR, hIR, on_pre='vm+=11*mV')
-shIRhIR.delay.delay='1ms+rand()'
-shIRhIR.connect('i==j')
-b2.Synapses(hIR, interhIRglobal, on_pre='vm+=11*mV').connect()
-b2.Synapses(hIR, lPPE, on_pre='vm+=11*mV').connect(i=sources, j=targets)
-b2.Synapses(hIR, interlNPE, on_pre='vm+=11*mV').connect(i=sources, j=targets)
-b2.Synapses(lPPE, interhIRlocal, on_pre='vm+=11*mV').connect(i=targets, j=sources)
-b2.Synapses(lNPE, hIR, on_pre='vm+=11*mV').connect(i=targets, j=sources)
-b2.Synapses(lIR, lNPE, on_pre='vm+=11*mV').connect('i==j')
-b2.Synapses(lIR, interlPPE, on_pre='vm+=11*mV').connect('i==j')
-b2.Synapses(interhIRglobal, hIR, on_pre='vm-=11*mV').connect()
-b2.Synapses(interhIRlocal, hIR, on_pre='vm-=11*mV').connect('i==j')
-b2.Synapses(interlNPE, lNPE, on_pre='vm-=11*mV').connect('i==j')
-b2.Synapses(interlPPE, lPPE, on_pre='vm-=11*mV').connect('i==j')
 
-b2.run(10*b2.second)
+if __name__ == "__main__":
+    exp1()

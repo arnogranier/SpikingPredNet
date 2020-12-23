@@ -11,3 +11,16 @@ def rateplot2d(M, from_, to, wh):
     idx = np.concatenate([np.bincount(im1), np.zeros(wh[0]*wh[1]-m-1)])
     idx = idx.reshape(wh[0],wh[1])
     return plt.imshow(idx)     
+
+def rplots(*args):
+    for arg in args:
+        plt.figure()
+        raster_plot(arg)
+
+def vplots(*args):
+    for arg in args:
+        plt.figure()
+        N = len(arg.vm)
+        for i in range(N):
+            plt.plot(arg.t/b2.ms, arg.vm[i]/b2.mV)
+            
