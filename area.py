@@ -48,7 +48,7 @@ class Area:
         return self.net[self.name+'_'+key+'_RECORD']
         
         
-def connect(a1, a2, W, wEXCIPE, wEXCIIR=None):
+def connect(a1, a2, W, wEXCIPE, wEXCIIR=None, plastic=False):
     assert a1.net == a2.net 
     assert W.shape == (a1.N, a2.N)
     net = a1.net 

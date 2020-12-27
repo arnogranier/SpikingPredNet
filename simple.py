@@ -25,11 +25,24 @@ def exp1():
                                      # and not really scalable to larger projects, but it's
                                      # simply a workaround because b2genn does not support
                                      # b2.TimedArray as model variables
-    connect(HIGH, LOW, W, wEXCIPE)
+    connect(HIGH, LOW, W, wEXCIPE, plastic=False)
     net.run(4*b2.second)
     rplots(LOW['IR'], HIGH['IR'], LOW['PPE'], LOW['NPE'])
     plt.show()
 
+def exp2():
+    pass 
 
+def exp3():
+    pass 
+
+def exp4():
+    pass 
+
+def exp5():
+    pass 
+
+def exp6():
+    pass
 if __name__ == "__main__":
     exp1()
