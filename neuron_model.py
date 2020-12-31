@@ -8,6 +8,9 @@ EL = -70.6 * b2.mV
 VT = -50.4 * b2.mV
 DeltaT = 2 * b2.mV
 Vcut = VT + 5 * DeltaT
+taupre = taupost = 20 * b2.ms 
+Apre = .1
+Apost = -.1
 
 def neurons(n:int, behavior='rs', name='', net=None):
     
@@ -61,10 +64,24 @@ def neurons(n:int, behavior='rs', name='', net=None):
     return group 
 
 
-def synapses(p1, p2, motif, w, net=None, **kwargs):
-    sinterPPEPPE = b2.Synapses(net[p1.name], net[p2.name], model='w_syn : volt',
+def synapses(p1, p2, motif, w, net=None, lateralSTDP=False, namesup='', **kwargs):
+    if lateralSTDP:
+        sinterPPEPPE = b2.Synapses(net[p1.name], net[p2.name],
+                                   model='''w_syn : volt
+                                            thetaSTDP : volt
+                                            dapre/dt = -apre/taupre : 1 (event-driven)
+                                            dapost/dt = -apost/taupost : 1 (event-driven)''',
+                                   on_pre='''vm+=35*int(w_syn>thetaSTDP)*mV
+                                             apre += Apre
+                                             w_syn = clip(w_syn+35*apost*int(abs(apost)>.1)*mV, 0*mV, 35*mV)''',
+                                   on_post='''apost += Apost
+                                             w_syn = clip(w_syn+35*apre*int(abs(apre)>.1)*mV, 0*mV, 35*mV)''',
+                               **kwargs,
+                               name='s_%s_%s'%(p1.name, p2.name)+namesup)
+    else:
+        sinterPPEPPE = b2.Synapses(net[p1.name], net[p2.name], model='w_syn : volt',
                                on_pre='vm+=w_syn', **kwargs,
-                               name='s_%s_%s'%(p1.name, p2.name))
+                               name='s_%s_%s'%(p1.name, p2.name)+namesup)
     if motif is None or motif == 'all':
         sinterPPEPPE.connect()
     elif isinstance(motif, str):
