@@ -1,9 +1,23 @@
 import brian2 as b2 
-from neuron_model import C, gL, EL, VT, DeltaT, Vcut
-from neuron_model import neurons
 import numpy as np 
 
-def Addconverge(net, a, b, centerw, surroundw, overlap=True):
+from neuron_model import C, gL, EL, VT, DeltaT, Vcut
+from neuron_model import neurons
+
+
+def Addconverge(net:b2.Network, a:str, b:str, centerw:float, surroundw:float,
+                overlap:bool=True):
+    """[summary]
+
+    Args:
+        net (b2.Network): [description]
+        a (str): [description]
+        b (str): [description]
+        centerw (float): [description]
+        surroundw (float): [description]
+        overlap (bool, optional): [description]. Defaults to True.
+    """
+    
     A = net[a]
     B = net[b]
     center = b2.Synapses(A, B, on_pre='vm+=%s*mV'%centerw)
@@ -26,9 +40,19 @@ def Addconverge(net, a, b, centerw, surroundw, overlap=True):
     surround.connect(i=i, j=j)
     net.add(surround)
     
-def AddOnCenterOffSuroundRetina(net, s, wh=None, name=''):
+def AddOnCenterOffSuroundRetina(net:b2.Network, s:str, w:tuple=(12,-4),
+                                name:str='retina'):
+    """[summary]
+
+    Args:
+        net (b2.Network): [description]
+        s (str): [description]
+        wh (tuple, optional): [description]. Defaults to (12,-4).
+        name (str, optional): [description]. Defaults to 'retina'.
+    """
+    
     S = net[s]
-    retina = neurons(S.N, name='retina')
+    retina = neurons(S.N, name=name)
     net.add(retina)
-    Addconverge(net, s, 'retina', 12, -4)
+    Addconverge(net, s, 'retina', wh[0], wh[1])
     

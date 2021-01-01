@@ -5,7 +5,23 @@ import sys
 import numpy as np 
 import pickle
 
-def PoissonImages(imgfolder, presentation_time, resize=None, contrast_multiplier=1, imgmode=None):
+def PoissonImages(imgfolder:str, presentation_time:float,
+                  resize:tuple=None, contrast_multiplier:float=1,
+                  imgmode:str=None):
+    """[summary]
+
+    Args:
+        imgfolder (str): [description]
+        presentation_time (float): [description]
+        resize (tuple, optional): [description]. Defaults to None.
+        contrast_multiplier (float, optional): [description]. Defaults to 1.
+        imgmode (str, optional): [description]. Defaults to None.
+
+    Returns:
+        [type]: [description]
+        [type]: [description]
+    """
+    
     arrays = list()
     for filename in os.listdir(sys.path[0]+imgfolder):
         if filename.endswith(".jpg") or filename.endswith(".png") or filename.endswith(".jpeg"):
@@ -20,21 +36,38 @@ def PoissonImages(imgfolder, presentation_time, resize=None, contrast_multiplier
         else:
             continue
     values = np.vstack(arrays)
-    images = b2.TimedArray(values*b2.Hz/4, presentation_time)
+    images = b2.TimedArray(values*b2.Hz/4, presentation_time*b2.ms)
     N = len(values[0])
     group = b2.NeuronGroup(N, 'rates : Hz', threshold='rand()<rates*dt')
-    group.run_regularly('rates = images(t,i)', presentation_time)
+    group.run_regularly('rates = images(t,i)', presentation_time*b2.ms)
     return images, group
     
-def PoissonMNIST(presentation_time=1000*b2.ms, N=60000, resize=None, contrast_multiplier=1, imgmode=None, value_to_rate_coeff=0.25, name=''):
+def PoissonMNIST(presentation_time:float=1000, N:int=60000, resize:tuple=None,
+                 contrast_multiplier:float=1, imgmode:str=None,
+                 value_to_rate_coeff:float=0.25, name:str='PoissonMNIST'):
+    """[summary]
+
+    Args:
+        presentation_time (float, optional): [description]. Defaults to 1000.
+        N (int, optional): [description]. Defaults to 60000.
+        resize (tuple, optional): [description]. Defaults to None.
+        contrast_multiplier (float, optional): [description]. Defaults to 1.
+        imgmode (str, optional): [description]. Defaults to None.
+        value_to_rate_coeff (float, optional): [description]. Defaults to 0.25.
+        name (str, optional): [description]. Defaults to 'PoissonMNIST'.
+
+    Returns:
+        [type]: [description]
+    """
+    
     f = open(sys.path[0]+"/mnist", "rb")
     mnist_imgs = pickle.load(f)[:N,:]
     mnist_labels = pickle.load(f)[:N]
     f.close()
     p = np.random.permutation(len(mnist_imgs))
     mnist_imgs, mnist_labels = mnist_imgs[p], mnist_labels[p]
-    timed_spikes = b2.TimedArray(value_to_rate_coeff*mnist_imgs*b2.Hz, presentation_time)
+    timed_spikes = b2.TimedArray(value_to_rate_coeff*mnist_imgs*b2.Hz, presentation_time*b2.ms)
     M = len(mnist_imgs[0])
     group = b2.NeuronGroup(M, 'rates : Hz', threshold='rand()<rates*dt', name=name)
-    group.run_regularly('rates = images(t,i)', presentation_time) 
-    return timed_spikes, group, mnist_labels, N * presentation_time
+    group.run_regularly('rates = images(t,i)', presentation_time*b2.ms) 
+    return timed_spikes, group, mnist_labels, N * presentation_time*b2.ms
