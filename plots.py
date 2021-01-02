@@ -3,27 +3,28 @@ import matplotlib.pyplot as plt
 import numpy as np 
 
 def raster_plot(M:b2.SpikeMonitor):
-    """[summary]
+    """Raster plot of a brian2.SpikeMonitor
 
     Args:
-        M (b2.SpikeMonitor): [description]
+        M (b2.SpikeMonitor): Recording of spikes
 
     Returns:
-        [type]: [description]
+        list of plt.Line2D: The raster plot
     """
     return b2.plot(M.t/b2.ms, M.i, ',')
 
 def rateplot2d(M:b2.SpikeMonitor, from_:float, to:float, wh:tuple):
-    """[summary]
+    """2D plot of firing rates. This is particularly useful to visualize 
+    activity in a spiking population processing 2D data such as images.
 
     Args:
-        M (b2.SpikeMonitor): [description]
-        from_ (float): [description]
-        to (float): [description]
-        wh (tuple): [description]
+        M (b2.SpikeMonitor): Recording of spikes
+        from_ (float): Time when we start taking spikes into account
+        to (float): Time when we stop taking spikes into account
+        wh (tuple): (width, height) of the data. w*h must be nb of neurons
 
     Returns:
-        [type]: [description]
+        plt.AxesImage: The 2D rate plot
     """
     im1 = M.i[np.where(np.logical_and(from_<M.t/b2.ms, M.t/b2.ms<to))[0]]
     m = np.max(im1)
@@ -32,7 +33,7 @@ def rateplot2d(M:b2.SpikeMonitor, from_:float, to:float, wh:tuple):
     return plt.imshow(idx)     
 
 def rplots(*args):
-    """[summary]
+    """Multiple raster plots. Calls raster_plot for each argument
     
     Args:
         Any number of b2.SpikeMonitor
@@ -42,10 +43,11 @@ def rplots(*args):
         raster_plot(arg)
 
 def vplots(vname:str, *args):
-    """[summary]
+    """Multiple plots of the evolution of a variable in different
+    brian2.StateMonitor.
     
     Args:
-        vname (str): [description]
+        vname (str): Name of the variable
         Any number of b2.StateMonitor
     """
     for arg in args:
