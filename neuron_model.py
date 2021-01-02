@@ -13,16 +13,20 @@ Apre = .1
 Apost = -.1
 
 def neurons(n:int, behavior:str='pe', name:str='', net:b2.Network=None):
-    """[summary]
-
+    """Create a brian2.NeuronGroup following the Adex neuron model
+    dvm/dt = (gL*(EL - vm) + gL*DeltaT*exp((vm - VT)/DeltaT) + I - w)/(taum*C) 
+    dw/dt = (a*(vm - EL) - w)/tauw 
+    
     Args:
-        n (int): [description]
-        behavior (str, optional): [description]. Defaults to 'rs'.
-        name (str, optional): [description]. Defaults to ''.
-        net (b2.Network, optional): [description]. Defaults to None.
+        n (int): Number of neurons
+        behavior (str, optional): Electrophysiological behavior. Defaults to 
+                                  'pe'
+        name (str, optional): name if the population. Defaults to ''.
+        net (b2.Network, optional): brian2.Network in which to add the
+                                    population. Defaults to None.
     
     Returns:
-        [type]: [description]
+        brian2.NeuronGroup: The population
     """
     
     eqs = '''
@@ -44,7 +48,6 @@ def neurons(n:int, behavior:str='pe', name:str='', net:b2.Network=None):
     group.b = 0.0805*b2.nA
     group.Vr = -70.6*b2.mV
     
-    # Pick an electrophysiological behaviour
     if behavior == 'pe':
         group.tauw = 400*b2.ms
         group.taum = 6
@@ -64,22 +67,31 @@ def neurons(n:int, behavior:str='pe', name:str='', net:b2.Network=None):
 
 
 def synapses(p1:str, p2:str, motif:(None, str, list, tuple, np.ndarray),
-             w:float, net:b2.Network=None, lateralSTDP:bool=False,
+             w:float, net:b2.Network, lateralSTDP:bool=False,
              namesup:str='', wmax:float=35, **kwargs):
-    """[summary]
+    """Add brian2.Synapses between population p1 and p2
 
     Args:
-        p1 (str): [description]
-        p2 (str): [description]
-        motif ([type]): [description]
-        w (float): [description]
-        net (b2.Network, optional): [description]. Defaults to None.
-        lateralSTDP (bool, optional): [description]. Defaults to False.
-        namesup (str, optional): [description]. Defaults to ''.
-        wmax (float, optional): [description]. Defaults to 35**kwargs.
+        p1 (str): Name of the projecting population
+        p2 (str): Name of the receiving population
+        motif (None, str, list, tuple, np.ndarray): Connection motif
+        w (float): Weight of the synapses
+        net (b2.Network, optional): brian2.Network containing populations p1 
+                                    and p2 and to which we add the synapses.
+                                    Defaults to None.
+        lateralSTDP (bool, optional): boolean controlling weither the synapses
+                                      follow the STDP learning rule for lateral
+                                      synapses. Defaults to False.
+        namesup (str, optional): Supplement of name because brian2 cannot use
+                                 the same name twice, but we want to be able to
+                                 add 2 synaptic complex from and to the same
+                                 populations. Defaults to ''.
+        wmax (float, optional): Max weight, usually sufficient to activate post
+                                synaptic neuron with one presynaptic spike.
+                                Defaults to 35**kwargs.
 
     Returns:
-        [type]: [description]
+        b2.Synapses: The synaptic complex 
     """
     
     if lateralSTDP:
@@ -89,11 +101,11 @@ def synapses(p1:str, p2:str, motif:(None, str, list, tuple, np.ndarray),
                        dapost/dt = -apost/taupost : 1 (event-driven)'''
         STDPonpre = '''vm+=%s*int(w_syn>thetaSTDP)*mV
                        apre += Apre
-                       w_syn = clip(w_syn+%s*apost*int(abs(apost)>.1)*mV,
-                                    0*mV, %s*mV)''' % (wmax, wmax, wmax)
+                       w_syn = clip(w_syn+%s*apost*int(abs(apost)>.1)*mV, 0*mV, %s*mV)'''\
+                        % (wmax, wmax, wmax)
         STDPonpost = '''apost += Apost
-                        w_syn = clip(w_syn+%s*apre*int(abs(apre)>.1)*mV,
-                                     0*mV, %s*mV)''' % (wmax, wmax)
+                        w_syn = clip(w_syn+%s*apre*int(abs(apre)>.1)*mV, 0*mV, %s*mV)'''\
+                         % (wmax, wmax)
         s = b2.Synapses(net[p1.name], net[p2.name], model=STDPmodel,
                         on_pre=STDPonpre, on_post=STDPonpost, **kwargs,
                         name='s_%s_%s_%s'%(p1.name, p2.name, namesup))
