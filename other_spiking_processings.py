@@ -5,17 +5,18 @@ from neuron_model import C, gL, EL, VT, DeltaT, Vcut
 from neuron_model import neurons
 
 
-def Addconverge(net:b2.Network, a:str, b:str, centerw:float, surroundw:float,
-                overlap:bool=True):
-    """[summary]
+def Addconverge(net:b2.Network, a:str, b:str, centerw:float, surroundw:float):
+    """Add 2D converging synapses from population a to b, with two weights:
+    one for the central one-to-one synapses, and one for the surround 
+    synapses. Think LGN->V1 or convolutions with 2 weights.
 
     Args:
-        net (b2.Network): [description]
-        a (str): [description]
-        b (str): [description]
-        centerw (float): [description]
-        surroundw (float): [description]
-        overlap (bool, optional): [description]. Defaults to True.
+        net (b2.Network): The brian2.Network containing the two populations, 
+                          and to which we add the synapses
+        a (str): Name of the projecting population
+        b (str): Name of the receiving populations
+        centerw (float): Weight of the center connections
+        surroundw (float): Weight of the surround connections
     """
     
     A = net[a]
@@ -41,19 +42,25 @@ def Addconverge(net:b2.Network, a:str, b:str, centerw:float, surroundw:float,
     surround.connect(i=i, j=j)
     net.add(surround)
     
-def AddOnCenterOffSuroundRetina(net:b2.Network, s:str, w:tuple=(12,-4),
+def AddOnCenterOffSuroundRetina(net:b2.Network, a:str, w:tuple=(12,-4),
                                 name:str='retina'):
-    """[summary]
+    """Add a population receiving on-center off-surround local converging
+    afference from population a. If a is pixel-space, then this population
+    models the activity of retinal ganglion cells (or LGN cells)
 
     Args:
-        net (b2.Network): [description]
-        s (str): [description]
-        wh (tuple, optional): [description]. Defaults to (12,-4).
-        name (str, optional): [description]. Defaults to 'retina'.
+        net (b2.Network): The brian2.Network containing population a, 
+                          and to which we add the new population and synapses
+        a (str): Name of the projecting population
+        w (tuple, optional): (weight of central connection,
+                              weight of surround connections).
+                             Defaults to (12,-4).
+        name (str, optional): Name of the receiving population. Defaults to
+                              'retina'.
     """
     
-    S = net[s]
+    S = net[a]
     retina = neurons(S.N, name=name)
     net.add(retina)
-    Addconverge(net, s, 'retina', wh[0], wh[1])
+    Addconverge(net, a, name, w[0], w[1])
     
