@@ -88,5 +88,5 @@ plt.show()
 ```
 
 ### References
-\[1\] Marcel Stimberg, Romain Brette, and Dan FM Goodman. “Brian 2, an intuitive and efficient neural simulator”.Elife8 (2019), e47314.
+\[1\] Marcel Stimberg, Romain Brette, and Dan FM Goodman. “Brian 2, an intuitive and efficient neural simulator”.Elife8 (2019), e47314.<br>
 \[2\] Marcel Stimberg, Dan FM Goodman, and Thomas Nowotny. “Brian2GeNN: accelerating spiking neural network simulations with graphics hardware”.Scientific Reports 10.1 (2020), pp. 1–12.
