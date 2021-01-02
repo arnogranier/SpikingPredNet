@@ -58,7 +58,7 @@ wINHIIR, wEXCIIR = -20, 25
 Next we can define a prediction weight matrix encoding the weights from higher IR to lower PE. These weights can be learned, but in this simple example we simply set them to a fixed matrix W:
 ```
 W = np.array([[1, 0, 1], 
-                [0, 1, 1]])
+              [0, 1, 1]])
 ```
 
 We create spiking predictive processing areas (modelling cortical areas). This generally (except when onlyIR is true) creates 3 neural populations representing internal representations, negative and positive prediction errors:
