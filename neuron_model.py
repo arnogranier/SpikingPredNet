@@ -64,8 +64,8 @@ def neurons(n:int, behavior:str='pe', name:str='', net:b2.Network=None):
 
 
 def synapses(p1:str, p2:str, motif:(None, str, list, tuple, np.ndarray),
-             w:float, net:b2.Network=None, lateralSTDP.bool=False,
-             namesup:str='', wmax:float=35 **kwargs):
+             w:float, net:b2.Network=None, lateralSTDP:bool=False,
+             namesup:str='', wmax:float=35, **kwargs):
     """[summary]
 
     Args:
@@ -74,7 +74,9 @@ def synapses(p1:str, p2:str, motif:(None, str, list, tuple, np.ndarray),
         motif ([type]): [description]
         w (float): [description]
         net (b2.Network, optional): [description]. Defaults to None.
+        lateralSTDP (bool, optional): [description]. Defaults to False.
         namesup (str, optional): [description]. Defaults to ''.
+        wmax (float, optional): [description]. Defaults to 35**kwargs.
 
     Returns:
         [type]: [description]

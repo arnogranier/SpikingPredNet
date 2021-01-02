@@ -12,34 +12,43 @@ from modules import Area, connect
 
 def exp1():
     """
-    
+    Experiment 1: Prediction error computation
     """
-    #
+    
+    # We take advantage of the brian2genn interface to run simulations on GPU
     b2.set_device('genn')
     
-    #
+    # brian2.TimedArray representing the firing rates of internal
+    # representation populations when we decide to set their activity 
+    # to predifined Poisson spike trains 
     activationLOW = np.array([[1, 0, 0], [1, 0, 0], [1, 0, 1], [1, 1, 0]])
     activationHIGH = np.array([[1, 0], [0, 1], [1, 0], [1, 0]])
     timedRatesLOW = b2.TimedArray(65*activationLOW*b2.Hz, dt=1*b2.second)
     timedRatesHIGH = b2.TimedArray(65*activationHIGH*b2.Hz, dt=1*b2.second)
     
-    #
+    # We create a brian2.Network to hold component of our simulation
     net = b2.Network()
     
-    #
+    # Model parameters: weights of prediction synapses
     wINHIPE, wEXCIPE = -25, 12
     
-    #
+    # For this experiment we set the weight matrix of prediction synapses
+    # to be fixed (it can be learned)
     W = np.array([[1, 0, 1], 
                   [0, 1, 1]])
     
-    #
+    # Creating spiking predictive processing areas (modelling cortical areas). 
+    # This generally (except when onlyIR is true) creates 3 neural 
+    # populations representing internal representations, negative 
+    # and positive prediction errors. Here we only need IR for the 
+    # higher area, and both areas have predigined Poisson spike trains
+    # as internal representations
     LOW = Area(3, 'LOW', net, wINHIPE, wEXCIPE, IRPoisson=True,
                recordspikes=True)
     HIGH = Area(2, 'HIGH', net, wINHIPE, wEXCIPE, IRPoisson=True,
-                recordspikes=True)
+                onlyIR=True, recordspikes=True)
     
-    #
+    # Setting firing rates of Poisson internal representations
     LOW.set_rates('timedRatesLOW')
     HIGH.set_rates('timedRatesHIGH') 
     # putting the var names as arguments of set_rates can seem a little off
@@ -47,19 +56,20 @@ def exp1():
     # workaround because b2genn does not support b2.TimedArray as model 
     # variables
     
-    #
+    # Connecting the two areas. HIGH sends predictions to LOW, and LOW sends
+    # back prediction errors to HIGH
     connect(HIGH, LOW, W, wEXCIPE, plastic=False)
     
-    #
+    # Running simulation
     net.run(4*b2.second)
     
-    #
+    # Raster plots
     rplots(LOW['IR'], HIGH['IR'], LOW['PPE'], LOW['NPE'])
     plt.show()
 
 def exp2():
     """
-    
+    Experiment 2: Bottom-Up inference
     """
     
     b2.set_device('genn')
@@ -80,7 +90,7 @@ def exp2():
 
 def exp3():
     """
-    
+    Experiment 3: Top-Down inference
     """
     
     b2.set_device('genn')
@@ -101,7 +111,7 @@ def exp3():
 
 def exp4():
     """
-    
+    Experiment 4: Learning temporal sequences with STDP
     """
     
     indices = np.tile(np.array([0, 2, 1, 3, 2, 4, 3, 5]), 25)
@@ -133,10 +143,10 @@ def exp4():
 
 def exp5():
     """
-    
+    Experiment 5: Learning prediction weights
     """
     
     pass 
 
 if __name__ == "__main__":
-    exp5()
+    exp1()
