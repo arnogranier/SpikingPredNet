@@ -35,7 +35,8 @@ def Addconverge(net:b2.Network, a:str, b:str, centerw:float, surroundw:float,
     ul, kul = k[1:, 1:]-sN-1, k[1:, 1:]
     dr, kdr = k[:sN-1, :sN-1]+sN+1, k[:sN-1, :sN-1]
     dl, kdl = k[:sN-1, 1:]+sN-1, k[:sN-1, 1:]
-    i = np.concatenate([s.flatten() for s in [ku, kd, kr, kl, kur, kul, kdr, kdl]])
+    i = np.concatenate([s.flatten() for s in [ku, kd, kr, kl, kur,
+                                              kul, kdr, kdl]])
     j = np.concatenate([s.flatten() for s in [u, d, r, l, ur, ul, dr, dl]])
     surround.connect(i=i, j=j)
     net.add(surround)

@@ -24,7 +24,8 @@ def PoissonImages(imgfolder:str, presentation_time:float,
     
     arrays = list()
     for filename in os.listdir(sys.path[0]+imgfolder):
-        if filename.endswith(".jpg") or filename.endswith(".png") or filename.endswith(".jpeg"):
+        if filename.endswith(".jpg") or filename.endswith(".png") \\
+         or filename.endswith(".jpeg"):
             im = PIL.Image.open(os.path.join(sys.path[0]+imgfolder, filename))
             im = im.convert(imgmode) if imgmode is not None else im.convert('L')
             if resize is not None:
@@ -66,8 +67,10 @@ def PoissonMNIST(presentation_time:float=1000, N:int=60000, resize:tuple=None,
     f.close()
     p = np.random.permutation(len(mnist_imgs))
     mnist_imgs, mnist_labels = mnist_imgs[p], mnist_labels[p]
-    timed_spikes = b2.TimedArray(value_to_rate_coeff*mnist_imgs*b2.Hz, presentation_time*b2.ms)
+    timed_spikes = b2.TimedArray(value_to_rate_coeff*mnist_imgs*b2.Hz,
+                                 presentation_time*b2.ms)
     M = len(mnist_imgs[0])
-    group = b2.NeuronGroup(M, 'rates : Hz', threshold='rand()<rates*dt', name=name)
+    group = b2.NeuronGroup(M, 'rates : Hz', threshold='rand()<rates*dt',
+                           name=name)
     group.run_regularly('rates = images(t,i)', presentation_time*b2.ms) 
     return timed_spikes, group, mnist_labels, N * presentation_time*b2.ms
