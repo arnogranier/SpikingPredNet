@@ -68,7 +68,8 @@ def neurons(n:int, behavior:str='pe', name:str='', net:b2.Network=None):
 
 def synapses(p1:str, p2:str, motif:(None, str, list, tuple, np.ndarray),
              w:float, net:b2.Network, lateralSTDP:bool=False,
-             namesup:str='', wmax:float=35, **kwargs):
+             namesup:str='', wmax:float=35, predSTDP:str=None,
+             linkw:bool=False, W_syn:np.ndarray=None, **kwargs):
     """Add brian2.Synapses between population p1 and p2
 
     Args:
@@ -89,6 +90,12 @@ def synapses(p1:str, p2:str, motif:(None, str, list, tuple, np.ndarray),
         wmax (float, optional): Max weight, usually sufficient to activate post
                                 synaptic neuron with one presynaptic spike.
                                 Defaults to 35**kwargs.
+        predSTDP (str, optional): STDP learning rules for long range synapses
+                                  Defaults to None.
+        linkw (bool, optional): Are weights copied from another population?
+                                Defaults to False.
+        W_syn (np.ndarray, optional): intial weight matrix for learning
+                                      predictions. Defaults to None.
 
     Returns:
         b2.Synapses: The synaptic complex 
@@ -109,11 +116,29 @@ def synapses(p1:str, p2:str, motif:(None, str, list, tuple, np.ndarray),
         s = b2.Synapses(net[p1.name], net[p2.name], model=STDPmodel,
                         on_pre=STDPonpre, on_post=STDPonpost, **kwargs,
                         name='s_%s_%s_%s'%(p1.name, p2.name, namesup))
+    elif predSTDP:
+        STDPmodel = '''w_syn : volt (shared)
+                       %s
+                       lastpost : second 
+                       lastpre : second ''' % ('Wf:1' if not linkw else '')
+        if predSTDP == '-+':
+            STDPonpre = '''vm+=w_syn*int(Wf>.5)
+                           Wf = clip(Wf+0.01*int((t-lastpost)<20*ms), 0, 1)
+                           lastpre = t'''
+            STDPonpost = '''lastpost = t'''
+        elif predSTDP == '+-':
+            STDPonpre = '''vm+=w_syn*int(Wf>.5)
+                           lastpre = t'''
+            STDPonpost = '''Wf = clip(Wf-0.01*int((t-lastpre)<1*ms), 0, 1)
+                            lastpost = t'''
+        s = b2.Synapses(net[p1.name], net[p2.name], model=STDPmodel,
+                        on_pre=STDPonpre, on_post=STDPonpost, **kwargs,
+                        name='s_%s_%s_%s'%(p1.name, p2.name, namesup))
     else:
         s = b2.Synapses(net[p1.name], net[p2.name], model='w_syn : volt',
                         on_pre='vm+=w_syn', **kwargs,
                         name='s_%s_%s'%(p1.name, p2.name)+namesup)
-    if motif is None or motif == 'all':
+    if motif is None or motif == 'all' or predSTDP:
         s.connect()
     elif isinstance(motif, str):
         s.connect(motif)
@@ -121,6 +146,9 @@ def synapses(p1:str, p2:str, motif:(None, str, list, tuple, np.ndarray),
       or (isinstance(motif, np.ndarray) and motif.shape[1] == 2):
         s.connect(i=motif[0], j=motif[1])
     s.w_syn = w*b2.mV
+    if predSTDP:
+        s.lastpost = 0*b2.ms
+        s.lastpre = 0*b2.ms
     if net is not None:
         net.add(s)
     return s

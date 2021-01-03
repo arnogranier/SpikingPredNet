@@ -39,6 +39,9 @@ class Area:
                                     (index of neuron, time of spike). Defaults
                                     to [].
         wmax (float, optional): Max weight. Defaults to 35..
+        tointerneurons (bool, optional): If True then populations project back
+                                         to their associated interneurons
+                                         populations. Defaults to False.
     """
     
     def __init__(self, N:int, name:str, net:b2.Network, wINHIPE:float,
@@ -46,7 +49,7 @@ class Area:
                  IRPoisson:bool=False, IRSet:bool=False,
                  recordspikes:bool=False, onlyIR:bool=False,
                  lateralplasticity:bool=False, SetSpikes:list=[],
-                 wmax:float=35.):
+                 wmax:float=35., tointerneurons:bool=False):
         self.net = net
         self.name = name
         self.N = N
@@ -55,9 +58,11 @@ class Area:
         if IRPoisson:
             IR = b2.NeuronGroup(N, 'rates : Hz', threshold='rand()<rates*dt',
                                 name=name+'_IR', refractory=3*b2.ms)
+            interIR = neurons(N, name=name+'_interIR', behavior='i', net=net)
             net.add(IR)
         elif IRSet:
             IR = b2.SpikeGeneratorGroup(N, [], []*b2.ms, name=name+'_IR')
+            interIR = neurons(N, name=name+'_interIR', behavior='i', net=net)
             net.add(IR)
         else:
             IR = neurons(N, name=name+'_IR', behavior='ir', net=net)
@@ -66,15 +71,19 @@ class Area:
             synapses(interIR, IR, 'i==j', wINHIIR, net)
             if not lateralplasticity:
                 synapses(IR, IR, 'i==j', wmax, net, delay=20*b2.ms)
+        if tointerneurons:
+            synapses(IR, interIR, 'i==j', wmax, net, delay=10*b2.ms)
         if not onlyIR:
             PPE = neurons(N, name=name+'_PPE', net=net)
             interPPE = neurons(N, name=name+'_interPPE', behavior='i', net=net)
             NPE = neurons(N, name=name+'_NPE', net=net)
             interNPE = neurons(N, name=name+'_interNPE', behavior='i', net=net)
+            if tointerneurons:
+                synapses(NPE, interNPE, 'i==j', wmax, net, delay=10*b2.ms)
             synapses(interPPE, PPE, 'i==j', wINHIPE, net)
             synapses(interNPE, NPE, 'i==j', wINHIPE, net)
-            synapses(IR, interPPE, 'i==j', wmax, net, delay=.1*b2.ms)
-            synapses(IR, NPE, 'i==j', wEXCIPE, net, delay=.1*b2.ms)
+            synapses(IR, interPPE, 'i==j', wmax, net)
+            synapses(IR, NPE, 'i==j', wEXCIPE, net)
             if not (IRPoisson or IRSet):
                 synapses(PPE, IR, 'i==j', wEXCIIR, net)
                 synapses(NPE, interIR, 'i==j', wmax, net)
@@ -151,7 +160,7 @@ class Area:
         
 def connect(a1:Area, a2:Area, W:np.ndarray, wEXCIPE:float, wEXCIIR:float=0.,
             plastic:bool=False, onlyNPE:bool=False, onlyPPE:bool=False,
-            wmax:float=35):
+            wmax:float=35, Wb:np.ndarray=None):
     """Connect two Area. a1 sends predictions to a2, and a2 sends back
     prediction errors to a1.
 
@@ -170,23 +179,33 @@ def connect(a1:Area, a2:Area, W:np.ndarray, wEXCIPE:float, wEXCIIR:float=0.,
         onlyPPE (bool, optional): If True only connect posistive PE population.
                                   Defaults to False.
         wmax (float, optional): Max weight. Defaults to 35.
+        Wb (np.ndarray, optional): Backward weight matrix if we don't want to 
+                                   initialize it as W. Defaults to None.
     """
     assert a1.net == a2.net 
     assert W.shape == (a1.N, a2.N)
     net = a1.net 
     sources, targets = W.nonzero()
+    linkbool = not onlyNPE and not onlyPPE and plastic
     if not onlyNPE:
-        synapses(net[a1.name+'_IR'], net[a2.name+'_PPE'],
-                 (sources, targets), wEXCIPE, net)
+        sWP = synapses(net[a1.name+'_IR'], net[a2.name+'_PPE'],
+                      (sources, targets), wEXCIPE, net,
+                      predSTDP='+-' if plastic else None)
         if not (a1.IRPoisson or a1.IRSet):
-            synapses(net[a2.name+'_PPE'], net[a1.name+'_interIR'],
-                     (targets, sources), wmax, net)
+            sM = synapses(net[a2.name+'_PPE'], net[a1.name+'_interIR'],
+                          (targets, sources), wmax, net,
+                          predSTDP='--' if plastic else None)
     if not onlyPPE:
-        synapses(net[a1.name+'_IR'], net[a2.name+'_interNPE'],
-                 (sources, targets), wmax, net)
+        sWN = synapses(net[a1.name+'_IR'], net[a2.name+'_interNPE'],
+                 (sources, targets), wmax, net,
+                 predSTDP='-+' if plastic else None, 
+                 linkw=True)
+        sWN.variables.add_reference('Wf', sWP, 'Wf')
         if not (a1.IRPoisson or a1.IRSet):
             synapses(net[a2.name+'_NPE'], net[a1.name+'_IR'],
-                     (targets, sources), wEXCIIR, net)
+                     (targets, sources), wEXCIIR, net,
+                     predSTDP='++' if plastic else None,
+                     linkw = sM.name if linkbool else None)
             
     
     

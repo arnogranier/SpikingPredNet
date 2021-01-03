@@ -145,8 +145,29 @@ def exp5():
     """
     Experiment 5: Learning prediction weights
     """
+
+    activationLOW = np.tile(np.array([[1, 0, 1], [0, 1, 1], 
+                                      [1, 0, 1], [0, 1, 1]]), (4,1))
+    activationHIGH = np.tile(np.array([[1, 0], [0, 1], [1, 0], [0, 1]]), (4,1))
+    timedRatesLOW = b2.TimedArray(65*activationLOW*b2.Hz, dt=1*b2.second)
+    timedRatesHIGH = b2.TimedArray(65*activationHIGH*b2.Hz, dt=1*b2.second)
+    net = b2.Network()
+    wINHIPE, wEXCIPE = -25, 12
+    W = np.random.random(size=(2,3))>0.5
+    W = np.ones((2,3))
+    LOW = Area(3, 'LOW', net, wINHIPE, wEXCIPE, IRPoisson=True,
+               recordspikes=True, tointerneurons=True)
+    HIGH = Area(2, 'HIGH', net, wINHIPE, wEXCIPE, IRPoisson=True,
+                onlyIR=True, recordspikes=True, tointerneurons=True)
+    LOW.set_rates('timedRatesLOW')
+    HIGH.set_rates('timedRatesHIGH') 
+    connect(HIGH, LOW, W, wEXCIPE, plastic=True)
+    net.run(16*b2.second)
+    print(net['s_HIGH_IR_LOW_PPE_'].Wf)
+    print(net['s_HIGH_IR_LOW_interNPE_'].Wf)
+    rplots(LOW['IR'], HIGH['IR'], LOW['PPE'], LOW['NPE'])
+    plt.show()
     
-    pass 
 
 if __name__ == "__main__":
-    exp4()
+    exp5()
