@@ -6,21 +6,22 @@ from neuron_model import neurons, synapses
 
 class Area:
     """Main class representing a spiking predictive processing model of a 
-    cortical area. Holds internal representation (IR) and prediction error (PPE 
-    and NPE) neural populations, and all local connections between them.
+    cortical area. Holds internal representation (IR) and prediction error (NPE 
+    and PPE) neural populations, and all local connections between them.
 
     Args:
         N (int): Number of neurons
         name (str): Name of the area
-        net (b2.Network): brian2.Network in which to add population and synapses
+        net (b2.Network): brian2.Network in which to add population and
+                          synapses
         wINHIPE (float): Weight of synapses inhibiting PE populations
         wEXCIPE (float): Weight of synapses exciting PE populations
         wINHIIR (float, optional): Weight of synapses inhibiting the IR
                                    population. Defaults to 0..
         wEXCIIR (float, optional): Weight of synapses exciting the IR
                                    population. Defaults to 0..
-        IRPoisson (bool, optional): If True then the IR population is defined as
-                                    following Poisson spike trains of rates
+        IRPoisson (bool, optional): If True then the IR population is defined 
+                                    as following Poisson spike trains of rates
                                     defined by calling Area.set_rates. Defaults
                                     to False.
         IRSet (bool, optional): If True then the IR population is defined as
@@ -55,53 +56,73 @@ class Area:
         self.N = N
         self.IRPoisson = IRPoisson
         self.IRSet = IRSet
+        
+        # Poisson internal representations
         if IRPoisson:
             IR = b2.NeuronGroup(N, 'rates : Hz', threshold='rand()<rates*dt',
                                 name=name+'_IR', refractory=3*b2.ms)
-            interIR = neurons(N, name=name+'_interIR', behavior='i', net=net)
             net.add(IR)
+            
+        # Deterministic predefined spike trains internal representations
         elif IRSet:
             IR = b2.SpikeGeneratorGroup(N, [], []*b2.ms, name=name+'_IR')
-            interIR = neurons(N, name=name+'_interIR', behavior='i', net=net)
             net.add(IR)
+        
+        # Freely evolving internal representations 
         else:
             IR = neurons(N, name=name+'_IR', behavior='ir', net=net)
-            interIR = neurons(N, name=name+'_interIR', behavior='i', net=net)
+        
+        # Internal representation inhibitory interneurons
+        interIR = neurons(N, name=name+'_interIR', behavior='i', net=net)
+        
+        # IR interneurons -> IR
+        # IR -> IR
         if not (IRPoisson or IRSet):
             synapses(interIR, IR, 'i==j', wINHIIR, net)
             if not lateralplasticity:
                 synapses(IR, IR, 'i==j', wmax, net, delay=20*b2.ms)
+            else:
+                synapses(IR, IR, 'i!=j', 1, net, lateralSTDP=True, 
+                         delay=19.9*b2.ms)
+        
+        # IR -> IR interneurons (needed for FIG 2 F experiment)
         if tointerneurons:
             synapses(IR, interIR, 'i==j', wmax, net, delay=10*b2.ms)
+        
+        # Positive and negative prediction error populations 
+        # PE interneurons -> PE
+        # local IR -> PPE, NPE interneurons
+        # PPE -> IR interneurons, NPE -> IR
         if not onlyIR:
-            PPE = neurons(N, name=name+'_PPE', net=net)
-            interPPE = neurons(N, name=name+'_interPPE', behavior='i', net=net)
             NPE = neurons(N, name=name+'_NPE', net=net)
             interNPE = neurons(N, name=name+'_interNPE', behavior='i', net=net)
+            PPE = neurons(N, name=name+'_PPE', net=net)
+            interPPE = neurons(N, name=name+'_interPPE', behavior='i', net=net)
             if tointerneurons:
-                synapses(NPE, interNPE, 'i==j', wmax, net, delay=10*b2.ms)
-            synapses(interPPE, PPE, 'i==j', wINHIPE, net)
+                synapses(PPE, interPPE, 'i==j', wmax, net, delay=10*b2.ms)
             synapses(interNPE, NPE, 'i==j', wINHIPE, net)
-            synapses(IR, interPPE, 'i==j', wmax, net)
-            synapses(IR, NPE, 'i==j', wEXCIPE, net)
+            synapses(interPPE, PPE, 'i==j', wINHIPE, net)
+            synapses(IR, interNPE, 'i==j', wmax, net)
+            synapses(IR, PPE, 'i==j', wEXCIPE, net)
             if not (IRPoisson or IRSet):
-                synapses(PPE, IR, 'i==j', wEXCIIR, net)
-                synapses(NPE, interIR, 'i==j', wmax, net)
-        if lateralplasticity:
-            synapses(IR, IR, 'i!=j', 1, net, lateralSTDP=True, namesup='P',
-                     delay=19.9*b2.ms)
+                synapses(NPE, IR, 'i==j', wEXCIIR, net)
+                synapses(PPE, interIR, 'i==j', wmax, net)
+        
+        # Recording of spikes
         if recordspikes:
             IRrecord = b2.SpikeMonitor(net[name+'_IR'], name=name+'_IR_RECORD')
             net.add(IRrecord)
             if not onlyIR:
-                PPErecord = b2.SpikeMonitor(net[name+'_PPE'],
-                                            name=name+'_PPE_RECORD')
-                net.add(PPErecord)
                 NPErecord = b2.SpikeMonitor(net[name+'_NPE'],
                                             name=name+'_NPE_RECORD')
                 net.add(NPErecord)
+                PPErecord = b2.SpikeMonitor(net[name+'_PPE'],
+                                            name=name+'_PPE_RECORD')
+                net.add(PPErecord)
+        
+        # Set spikes of neuron index at time time
         for (index, time) in SetSpikes:
-            INITSG = b2.SpikeGeneratorGroup(1, [0], [time,]*b2.second,
+            INITSG = b2.SpikeGeneratorGroup(1, [0], [time-.1,]*b2.second,
                                             name='INITSG')
             net.add(INITSG)
             synapses(INITSG, IR, (0, index), wmax, net)
@@ -112,7 +133,6 @@ class Area:
         Since brian2genn does not support brian2.TimedArray as model variable,
         we pass the name of the brian2.TimedArray representing firing rates and
         call NeuronGroup.run_regularly to change firing rates every second. 
-        This is a dirty workaround, but it works.
 
         Args:
             rate_var_name (str): Name of the brian2.TimedArray variable
@@ -146,7 +166,7 @@ class Area:
         
     def __getitem__(self, key:str):
         """Get a Monitor with the Area[] syntax. SpikeMonitors are accessed
-        through the keywords 'IR', 'PPE' and 'NPE'. StateMonitors are 
+        through the keywords 'IR', 'NPE' and 'PPE'. StateMonitors are 
         accessed with their names.
         
         Args:
@@ -159,7 +179,7 @@ class Area:
         
         
 def connect(a1:Area, a2:Area, W:np.ndarray, wEXCIPE:float, wEXCIIR:float=0.,
-            plastic:bool=False, onlyNPE:bool=False, onlyPPE:bool=False,
+            plastic:bool=False, onlyPPE:bool=False, onlyNPE:bool=False,
             wmax:float=35, Wb:np.ndarray=None):
     """Connect two Area. a1 sends predictions to a2, and a2 sends back
     prediction errors to a1.
@@ -174,9 +194,9 @@ def connect(a1:Area, a2:Area, W:np.ndarray, wEXCIPE:float, wEXCIIR:float=0.,
         plastic (bool, optional): If True then prediction weights are plastic
                                   and learning of predictions occur. Defaults
                                   to False.
-        onlyNPE (bool, optional): If True only connect negative PE population.
+        onlyPPE (bool, optional): If True only connect negative PE population.
                                   Defaults to False.
-        onlyPPE (bool, optional): If True only connect posistive PE population.
+        onlyNPE (bool, optional): If True only connect posistive PE population.
                                   Defaults to False.
         wmax (float, optional): Max weight. Defaults to 35.
         Wb (np.ndarray, optional): Backward weight matrix if we don't want to 
@@ -185,27 +205,44 @@ def connect(a1:Area, a2:Area, W:np.ndarray, wEXCIPE:float, wEXCIIR:float=0.,
     assert a1.net == a2.net 
     assert W.shape == (a1.N, a2.N)
     net = a1.net 
+    
+    # No need to build synapses with weight 0
     sources, targets = W.nonzero()
-    linkbool = not onlyNPE and not onlyPPE and plastic
-    if not onlyNPE:
-        sWP = synapses(net[a1.name+'_IR'], net[a2.name+'_PPE'],
+    
+    # True if we want to learn prediction weights towards the 2 PE populations
+    linkbool = not onlyPPE and not onlyNPE and plastic
+    
+    if not onlyPPE:
+        
+        # Higher IR -> NPE
+        sWP = synapses(net[a1.name+'_IR'], net[a2.name+'_NPE'],
                       (sources, targets), wEXCIPE, net,
                       predSTDP='+-' if plastic else None)
+
+        # Lower NPE -> IR interneurons
         if not (a1.IRPoisson or a1.IRSet):
-            sM = synapses(net[a2.name+'_PPE'], net[a1.name+'_interIR'],
+            sM = synapses(net[a2.name+'_NPE'], net[a1.name+'_interIR'],
                           (targets, sources), wmax, net,
                           predSTDP='--' if plastic else None)
-    if not onlyPPE:
-        sWN = synapses(net[a1.name+'_IR'], net[a2.name+'_interNPE'],
+            
+    if not onlyNPE:
+        
+        # Higher IR -> PPE interneurons
+        sWN = synapses(net[a1.name+'_IR'], net[a2.name+'_interPPE'],
                  (sources, targets), wmax, net,
                  predSTDP='-+' if plastic else None, 
                  linkw=True)
-        sWN.variables.add_reference('Wf', sWP, 'Wf')
+        
+        # In case of prediction weight learning, set weight matrices toward
+        # NPE and PPE to be the same
+        if linkw:
+            sWN.variables.add_reference('Wf', sWP, 'Wf')
+            
+        # Lower PPE -> IR
         if not (a1.IRPoisson or a1.IRSet):
-            synapses(net[a2.name+'_NPE'], net[a1.name+'_IR'],
+            synapses(net[a2.name+'_PPE'], net[a1.name+'_IR'],
                      (targets, sources), wEXCIIR, net,
-                     predSTDP='++' if plastic else None,
-                     linkw = sM.name if linkbool else None)
+                     predSTDP='++' if plastic else None)
             
     
     

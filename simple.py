@@ -64,7 +64,7 @@ def exp1():
     net.run(4*b2.second)
     
     # Raster plots
-    rplots(LOW['IR'], HIGH['IR'], LOW['PPE'], LOW['NPE'])
+    rplots(LOW['IR'], HIGH['IR'], LOW['NPE'], LOW['PPE'])
     plt.show()
 
 def exp2():
@@ -80,12 +80,14 @@ def exp2():
     wINHIIR, wEXCIIR = -20, 25
     W = np.array([[1, 0, 1], 
                   [0, 1, 1]])
-    LOW = Area(3, 'LOW', net, wINHIPE, wEXCIPE, IRPoisson=True, recordspikes=True)
-    HIGH = Area(2, 'HIGH', net, wINHIPE, wEXCIPE, wINHIIR, wEXCIIR, onlyIR=True, recordspikes=True)
+    LOW = Area(3, 'LOW', net, wINHIPE, wEXCIPE, IRPoisson=True,
+               recordspikes=True)
+    HIGH = Area(2, 'HIGH', net, wINHIPE, wEXCIPE, wINHIIR, wEXCIIR,
+                onlyIR=True, recordspikes=True)
     LOW.set_rates('timedRatesLOW')
     connect(HIGH, LOW, W, wEXCIPE, wEXCIIR, plastic=False)
     net.run(4*b2.second)
-    rplots(LOW['IR'], HIGH['IR'], LOW['PPE'], LOW['NPE'])
+    rplots(LOW['IR'], HIGH['IR'], LOW['NPE'], LOW['PPE'])
     plt.show()
 
 def exp3():
@@ -101,12 +103,14 @@ def exp3():
     wINHIIR, wEXCIIR = -20, 25
     W = np.array([[1, 0, 1], 
                   [0, 1, 1]])
-    LOW = Area(3, 'LOW', net, wINHIPE, wEXCIPE, wINHIIR, wEXCIIR, recordspikes=True)
-    HIGH = Area(2, 'HIGH', net, wINHIPE, wEXCIPE, IRPoisson=True, onlyIR=True, recordspikes=True)
+    LOW = Area(3, 'LOW', net, wINHIPE, wEXCIPE, wINHIIR, wEXCIIR,
+               recordspikes=True)
+    HIGH = Area(2, 'HIGH', net, wINHIPE, wEXCIPE, IRPoisson=True, onlyIR=True,
+                recordspikes=True)
     HIGH.set_rates('timedRatesHIGH')
     connect(HIGH, LOW, W, wEXCIPE, wEXCIIR, plastic=False)
     net.run(4*b2.second)
-    rplots(LOW['IR'], HIGH['IR'], LOW['PPE'], LOW['NPE'])
+    rplots(LOW['IR'], HIGH['IR'], LOW['NPE'], LOW['PPE'])
     plt.show()
 
 def exp4():
@@ -127,18 +131,26 @@ def exp4():
                   [0, 0, 1, 0, 1, 0],
                   [0, 0, 0, 1, 0, 1]])
     LOW = Area(6, 'LOW', net, wINHIPE, wEXCIPE, IRSet=True, recordspikes=True)
+    
+    # Higher area has lateral plasticity
     HIGH = Area(4, 'HIGH', net, wINHIPE, wEXCIPE, wINHIIR, wEXCIIR,
                 onlyIR=True, lateralplasticity=True, recordspikes=True, 
                 SetSpikes = [(0,1.8)])
+    
     LOW.set_spikes(indices, times)
-    connect(HIGH, LOW, W, wEXCIPE, wEXCIIR, plastic=False, onlyNPE=True)
-    net['s_HIGH_IR_LOW_interNPE'].w_syn = 0*b2.mV
+    connect(HIGH, LOW, W, wEXCIPE, wEXCIIR, plastic=False, onlyPPE=True)
+    
+    # For this experiment we unfortunately had to add two phases for 
+    # learning. Theoretically this shouldn't be necessary, but spiking
+    # networks are capricious beasts
+    net['s_HIGH_IR_LOW_interPPE'].w_syn = 0*b2.mV
     net['s_HIGH_IR_HIGH_IR_P'].thetaSTDP = 40*b2.mV
     net.run(1.6*b2.second)
-    net['s_HIGH_IR_LOW_interNPE'].w_syn = 35*b2.mV
+    net['s_HIGH_IR_LOW_interPPE'].w_syn = 35*b2.mV
     net['s_HIGH_IR_HIGH_IR_P'].thetaSTDP = 7*b2.mV
     net.run(.6*b2.second)
-    rplots(LOW['IR'], HIGH['IR'], LOW['NPE'])
+    
+    rplots(LOW['IR'], HIGH['IR'], LOW['PPE'])
     plt.show()
 
 def exp5():
@@ -161,11 +173,14 @@ def exp5():
                 onlyIR=True, recordspikes=True, tointerneurons=True)
     LOW.set_rates('timedRatesLOW')
     HIGH.set_rates('timedRatesHIGH') 
+    
+    # Prediction weights are plastic
     connect(HIGH, LOW, W, wEXCIPE, plastic=True)
+    
     net.run(16*b2.second)
-    print(net['s_HIGH_IR_LOW_PPE_'].Wf)
-    print(net['s_HIGH_IR_LOW_interNPE_'].Wf)
-    rplots(LOW['IR'], HIGH['IR'], LOW['PPE'], LOW['NPE'])
+    print(net['s_HIGH_IR_LOW_NPE_'].Wf)
+    print(net['s_HIGH_IR_LOW_interPPE_'].Wf)
+    rplots(LOW['IR'], HIGH['IR'], LOW['NPE'], LOW['PPE'])
     plt.show()
     
 

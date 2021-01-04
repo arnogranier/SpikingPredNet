@@ -30,7 +30,7 @@ def neurons(n:int, behavior:str='pe', name:str='', net:b2.Network=None):
     """
     
     eqs = '''
-    dvm/dt = (gL*(EL - vm) + gL*DeltaT*exp((vm - VT)/DeltaT) + I - w)/(taum*C) : volt
+    dvm/dt = (gL*(EL-vm)+gL*DeltaT*exp((vm-VT)/DeltaT) + I - w)/(taum*C) : volt
     dw/dt = (a*(vm - EL) - w)/tauw : amp
     I : amp
     tauw : second
@@ -63,8 +63,6 @@ def neurons(n:int, behavior:str='pe', name:str='', net:b2.Network=None):
     if net is not None:
         net.add(group)
     return group 
-
-
 
 def synapses(p1:str, p2:str, motif:(None, str, list, tuple, np.ndarray),
              w:float, net:b2.Network, lateralSTDP:bool=False,
@@ -102,53 +100,52 @@ def synapses(p1:str, p2:str, motif:(None, str, list, tuple, np.ndarray),
     """
     
     if lateralSTDP:
-        STDPmodel = '''w_syn : volt
-                       thetaSTDP : volt
-                       dapre/dt = -apre/taupre : 1 (event-driven)
-                       dapost/dt = -apost/taupost : 1 (event-driven)'''
-        STDPonpre = '''vm+=%s*int(w_syn>thetaSTDP)*mV
-                       apre += Apre
-                       w_syn = clip(w_syn+%s*apost*int(abs(apost)>.1)*mV, 0*mV, %s*mV)'''\
-                        % (wmax, wmax, wmax)
-        STDPonpost = '''apost += Apost
-                        w_syn = clip(w_syn+%s*apre*int(abs(apre)>.1)*mV, 0*mV, %s*mV)'''\
-                         % (wmax, wmax)
-        s = b2.Synapses(net[p1.name], net[p2.name], model=STDPmodel,
-                        on_pre=STDPonpre, on_post=STDPonpost, **kwargs,
-                        name='s_%s_%s_%s'%(p1.name, p2.name, namesup))
+        model = '''w_syn : volt
+                   thetaSTDP : volt
+                   dapre/dt = -apre/taupre : 1 (event-driven)
+                   dapost/dt = -apost/taupost : 1 (event-driven)
+                   wmax : volt (shared)'''
+        onpre = '''vm+=wmax*int(w_syn>thetaSTDP)*mV
+                   apre += Apre
+                   w_syn = clip(w_syn+wmax*apost*int(apost<-.1), 0*mV, wmax)'''
+        onpost = '''apost += Apost
+                    w_syn = clip(w_syn+wmax*apre*int(apre>.1), 0*mV, wmax)'''
     elif predSTDP:
-        STDPmodel = '''w_syn : volt (shared)
-                       %s
-                       lastpost : second 
-                       lastpre : second ''' % ('Wf:1' if not linkw else '')
+        model = '''w_syn : volt (shared) 
+                   lastpost : second 
+                   lastpre : second 
+                   %s ''' % ('Wf:1' if not linkw else '')
         if predSTDP == '-+':
-            STDPonpre = '''vm+=w_syn*int(Wf>.5)
-                           Wf = clip(Wf+0.01*int((t-lastpost)<20*ms), 0, 1)
-                           lastpre = t'''
-            STDPonpost = '''lastpost = t'''
+            onpre = '''vm+=w_syn*int(Wf>.5)
+                       Wf = clip(Wf+0.01*int((t-lastpost)<20*ms), 0, 1)
+                       lastpre = t'''
+            onpost = '''lastpost = t'''
         elif predSTDP == '+-':
-            STDPonpre = '''vm+=w_syn*int(Wf>.5)
-                           lastpre = t'''
-            STDPonpost = '''Wf = clip(Wf-0.01*int((t-lastpre)<1*ms), 0, 1)
-                            lastpost = t'''
-        s = b2.Synapses(net[p1.name], net[p2.name], model=STDPmodel,
-                        on_pre=STDPonpre, on_post=STDPonpost, **kwargs,
-                        name='s_%s_%s_%s'%(p1.name, p2.name, namesup))
+            onpre = '''vm+=w_syn*int(Wf>.5)
+                       lastpre = t'''
+            onpost = '''Wf = clip(Wf-0.01*int((t-lastpre)<1*ms), 0, 1)
+                        lastpost = t'''
     else:
-        s = b2.Synapses(net[p1.name], net[p2.name], model='w_syn : volt',
-                        on_pre='vm+=w_syn', **kwargs,
-                        name='s_%s_%s'%(p1.name, p2.name)+namesup)
+        model = 'w_syn : volt'
+        onpre = 'vm+=w_syn'
+        onpost = ''
+    s = b2.Synapses(net[p1.name], net[p2.name], model==model,
+                    on_pre=onpre, on_post=onpost, **kwargs,
+                    name='s_%s_%s_%s'%(p1.name, p2.name, namesup))
     if motif is None or motif == 'all' or predSTDP:
         s.connect()
     elif isinstance(motif, str):
         s.connect(motif)
-    elif (isinstance(motif, (list, tuple)) and len(motif)==2) \
-      or (isinstance(motif, np.ndarray) and motif.shape[1] == 2):
+    elif (isinstance(motif, (list, tuple, np.ndarray)) and len(motif)==2):
         s.connect(i=motif[0], j=motif[1])
+    else:
+        raise NotImplementedError
     s.w_syn = w*b2.mV
     if predSTDP:
         s.lastpost = 0*b2.ms
         s.lastpre = 0*b2.ms
+    elif lateralSTDP:
+        s.wmax = wmax
     if net is not None:
         net.add(s)
     return s

@@ -20,8 +20,8 @@ def PoissonImages(imgfolder:str, presentation_time:float,
                                                is higher contrast. Defaults to 
                                                1.
         imgmode (str, optional): Color encoding (B&W, grayscale, RGB, etc..). 
-                                 This is a parameter passed to PIL.Image.convert
-                                 Defaults to grayscale.
+                                 This is a parameter passed to 
+                                 PIL.Image.convert. Defaults to grayscale.
         value_to_rate_coeff (float, optional): coeff to pass from pixel value 
                                                (0->255) to Poisson firing rate. 
                                                Defaults to 0.25.
@@ -72,8 +72,9 @@ def PoissonMNIST(presentation_time:float=1000, N:int=60000, resize:tuple=None,
                                                is higher contrast. Defaults to 
                                                1.
         imgmode (str, optional): Color encoding (B&W, grayscale, RGB, etc..). 
-                                 This is a parameter passed to PIL.Image.convert
-                                 Defaults to grayscale.
+                                 This is a parameter passed to
+                                 PIL.Image.convert. Defaults to grayscale.
+                                 
         value_to_rate_coeff (float, optional): coeff to pass from pixel value 
                                                (0->255) to Poisson firing rate. 
                                                Defaults to 0.25.
