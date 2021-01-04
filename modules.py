@@ -221,7 +221,7 @@ def connect(a1:Area, a2:Area, W:np.ndarray, wEXCIPE:float, wEXCIIR:float=0.,
 
         # Lower NPE -> IR interneurons
         if not (a1.IRPoisson or a1.IRSet):
-            sM = synapses(net[a2.name+'_NPE'], net[a1.name+'_interIR'],
+            synapses(net[a2.name+'_NPE'], net[a1.name+'_interIR'],
                           (targets, sources), wmax, net,
                           predSTDP='--' if plastic else None)
             
@@ -229,13 +229,12 @@ def connect(a1:Area, a2:Area, W:np.ndarray, wEXCIPE:float, wEXCIIR:float=0.,
         
         # Higher IR -> PPE interneurons
         sWN = synapses(net[a1.name+'_IR'], net[a2.name+'_interPPE'],
-                 (sources, targets), wmax, net,
-                 predSTDP='-+' if plastic else None, 
-                 linkw=True)
+                 (sources, targets), wmax, net, linkw=True,
+                 predSTDP='-+' if plastic else None)
         
         # In case of prediction weight learning, set weight matrices toward
         # NPE and PPE to be the same
-        if linkw:
+        if linkbool:
             sWN.variables.add_reference('Wf', sWP, 'Wf')
             
         # Lower PPE -> IR
