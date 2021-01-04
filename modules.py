@@ -180,7 +180,7 @@ class Area:
         
 def connect(a1:Area, a2:Area, W:np.ndarray, wEXCIPE:float, wEXCIIR:float=0.,
             plastic:bool=False, onlyPPE:bool=False, onlyNPE:bool=False,
-            wmax:float=35, Wb:np.ndarray=None):
+            wmax:float=35., Wb:np.ndarray=None):
     """Connect two Area. a1 sends predictions to a2, and a2 sends back
     prediction errors to a1.
 

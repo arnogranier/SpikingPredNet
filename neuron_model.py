@@ -29,6 +29,9 @@ def neurons(n:int, behavior:str='pe', name:str='', net:b2.Network=None):
         brian2.NeuronGroup: The population
     """
     
+    # Adex Neuron model http://www.scholarpedia.org/article/Adaptive_exponential_integrate-and-fire_model
+    # We also added a time constant taum compared with the classical 
+    # implementation, that differs with neuron type (IR, PE, intenreuron) 
     eqs = '''
     dvm/dt = (gL*(EL-vm)+gL*DeltaT*exp((vm-VT)/DeltaT) + I - w)/(taum*C) : volt
     dw/dt = (a*(vm - EL) - w)/tauw : amp
@@ -39,24 +42,28 @@ def neurons(n:int, behavior:str='pe', name:str='', net:b2.Network=None):
     Vr : volt
     taum : 1
     '''
-
     group = b2.NeuronGroup(n, eqs, threshold='vm>Vcut', reset="vm=Vr; w+=b",
                            method='euler', name=name)
     group.vm = EL
-    
     group.a = 4*b2.nS
     group.b = 0.0805*b2.nA
     group.Vr = -70.6*b2.mV
     
+    # Prediction error neurons
     if behavior == 'pe':
         group.tauw = 400*b2.ms
         group.taum = 6
+    
+    # Internal representation neurons
     elif behavior == 'ir':
         group.tauw = 55*b2.ms
         group.taum = 3
+    
+    # Interneurons
     elif behavior == 'i':
         group.tauw = 10*b2.ms
         group.taum = 1
+        
     else:
         raise NotImplementedError
 
@@ -99,6 +106,7 @@ def synapses(p1:str, p2:str, motif:(None, str, list, tuple, np.ndarray),
         b2.Synapses: The synaptic complex 
     """
     
+    # Lateral IR->IR synapse and STDP model for sequence learning
     if lateralSTDP:
         model = '''w_syn : volt
                    thetaSTDP : volt
@@ -110,6 +118,8 @@ def synapses(p1:str, p2:str, motif:(None, str, list, tuple, np.ndarray),
                    w_syn = clip(w_syn+wmax*apost*int(apost<-.1), 0*mV, wmax)'''
         onpost = '''apost += Apost
                     w_syn = clip(w_syn+wmax*apre*int(apre>.1), 0*mV, wmax)'''
+
+    # Higher IR -> PE synapse and STDP model for prediction weight learning 
     elif predSTDP:
         model = '''w_syn : volt (shared) 
                    lastpost : second 
@@ -125,13 +135,18 @@ def synapses(p1:str, p2:str, motif:(None, str, list, tuple, np.ndarray),
                        lastpre = t'''
             onpost = '''Wf = clip(Wf-0.01*int((t-lastpre)<1*ms), 0, 1)
                         lastpost = t'''
+    
+    # Synapse model with no learning 
     else:
         model = 'w_syn : volt'
         onpre = 'vm+=w_syn'
         onpost = ''
+        
     s = b2.Synapses(net[p1.name], net[p2.name], model==model,
                     on_pre=onpre, on_post=onpost, **kwargs,
                     name='s_%s_%s_%s'%(p1.name, p2.name, namesup))
+    
+    # Connect synapses 
     if motif is None or motif == 'all' or predSTDP:
         s.connect()
     elif isinstance(motif, str):
@@ -140,12 +155,15 @@ def synapses(p1:str, p2:str, motif:(None, str, list, tuple, np.ndarray),
         s.connect(i=motif[0], j=motif[1])
     else:
         raise NotImplementedError
+    
+    # Set synapses model parameters
     s.w_syn = w*b2.mV
     if predSTDP:
         s.lastpost = 0*b2.ms
         s.lastpre = 0*b2.ms
     elif lateralSTDP:
         s.wmax = wmax
+        
     if net is not None:
         net.add(s)
     return s
