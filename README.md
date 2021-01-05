@@ -1,7 +1,7 @@
 # SpikingPredNet
 
 This repository holds the code associated with my master thesis for the Neural Systems and Computation master at the Institute of Neuroinformatics, Zürich. <br>
-The full master thesis __Predictive processing as a theory of cortical computation__ can be found [here](https://drive.google.com/file/d/10IlbAAJgDBCdhrmDhMqLsdihk7iuAW1R/view?usp=sharing). <br>
+The full master thesis __Predictive processing as a theory of cortical computation__ can be found [here](https://drive.google.com/file/d/1UY4GiOLBsKHzSzk6la2VNZtl91XkbIIw/view?usp=sharing). <br>
 We propose here an implementation of a basic version of __predictive processing in a spiking neural network__, using the brian2 spiking neural networks simulator \[1\] and the brian2genn interface \[2\] to accelerate computation on GPUs.
 
 # This is still under construction, final version should come around JAN 6
