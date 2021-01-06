@@ -122,7 +122,7 @@ class Area:
         
         # Set spikes of neuron index at time time
         for (index, time) in SetSpikes:
-            INITSG = b2.SpikeGeneratorGroup(1, [0], [time-.1,]*b2.second,
+            INITSG = b2.SpikeGeneratorGroup(1, [0], [time,]*b2.second,
                                             name='INITSG')
             net.add(INITSG)
             synapses(INITSG, IR, (0, index), wmax, net)
@@ -215,27 +215,29 @@ def connect(a1:Area, a2:Area, W:np.ndarray, wEXCIPE:float, wEXCIIR:float=0.,
     if not onlyPPE:
         
         # Higher IR -> NPE
-        sWP = synapses(net[a1.name+'_IR'], net[a2.name+'_NPE'],
-                      (sources, targets), wEXCIPE, net,
-                      predSTDP='+-' if plastic else None)
+        sWN = synapses(net[a1.name+'_IR'], net[a2.name+'_NPE'],
+                       (sources, targets), wEXCIPE, net,
+                       predSTDP='+-' if plastic else None, W_syn=W, 
+                       lr=0.045, twindow=2)
 
         # Lower NPE -> IR interneurons
         if not (a1.IRPoisson or a1.IRSet):
             synapses(net[a2.name+'_NPE'], net[a1.name+'_interIR'],
-                          (targets, sources), wmax, net,
-                          predSTDP='--' if plastic else None)
+                     (targets, sources), wmax, net,
+                     predSTDP='--' if plastic else None)
             
     if not onlyNPE:
         
         # Higher IR -> PPE interneurons
-        sWN = synapses(net[a1.name+'_IR'], net[a2.name+'_interPPE'],
-                 (sources, targets), wmax, net, linkw=True,
-                 predSTDP='-+' if plastic else None)
+        sWP = synapses(net[a1.name+'_IR'], net[a2.name+'_interPPE'],
+                       (sources, targets), wmax, net, 
+                       predSTDP='-+' if plastic else None, linkw=linkbool,
+                       lr=0.01, twindow=20)
         
         # In case of prediction weight learning, set weight matrices toward
         # NPE and PPE to be the same
         if linkbool:
-            sWN.variables.add_reference('Wf', sWP, 'Wf')
+            sWP.variables.add_reference('Wf', sWN, 'Wf')
             
         # Lower PPE -> IR
         if not (a1.IRPoisson or a1.IRSet):

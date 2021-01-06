@@ -64,7 +64,7 @@ def exp1():
     net.run(4*b2.second)
     
     # Raster plots
-    rplots(LOW['IR'], HIGH['IR'], LOW['NPE'], LOW['PPE'])
+    rplots(LOW['IR'], HIGH['IR'], LOW['NPE'], LOW['PPE'], marker='.')
     plt.show()
 
 def exp2():
@@ -87,7 +87,7 @@ def exp2():
     LOW.set_rates('timedRatesLOW')
     connect(HIGH, LOW, W, wEXCIPE, wEXCIIR, plastic=False)
     net.run(4*b2.second)
-    rplots(LOW['IR'], HIGH['IR'], LOW['NPE'], LOW['PPE'])
+    rplots(LOW['IR'], HIGH['IR'], LOW['NPE'], LOW['PPE'], marker='.')
     plt.show()
 
 def exp3():
@@ -110,7 +110,7 @@ def exp3():
     HIGH.set_rates('timedRatesHIGH')
     connect(HIGH, LOW, W, wEXCIPE, wEXCIIR, plastic=False)
     net.run(4*b2.second)
-    rplots(LOW['IR'], HIGH['IR'], LOW['NPE'], LOW['PPE'])
+    rplots(LOW['IR'], HIGH['IR'], LOW['NPE'], LOW['PPE'], marker='.')
     plt.show()
 
 def exp4():
@@ -144,29 +144,32 @@ def exp4():
     # learning. Theoretically this shouldn't be necessary, but spiking
     # networks are capricious beasts
     net['s_HIGH_IR_LOW_interPPE'].w_syn = 0*b2.mV
-    net['s_HIGH_IR_HIGH_IR_P'].thetaSTDP = 40*b2.mV
+    net['s_HIGH_IR_HIGH_IR'].thetaSTDP = 40*b2.mV
     net.run(1.6*b2.second)
     net['s_HIGH_IR_LOW_interPPE'].w_syn = 35*b2.mV
-    net['s_HIGH_IR_HIGH_IR_P'].thetaSTDP = 7*b2.mV
+    net['s_HIGH_IR_HIGH_IR'].thetaSTDP = 7*b2.mV
     net.run(.6*b2.second)
     
-    rplots(LOW['IR'], HIGH['IR'], LOW['PPE'])
+    rplots(LOW['IR'], HIGH['IR'], LOW['PPE'], marker='.', T=(0, 2200))
     plt.show()
 
 def exp5():
     """
     Experiment 5: Learning prediction weights
     """
-
+    
     activationLOW = np.tile(np.array([[1, 0, 1], [0, 1, 1], 
-                                      [1, 0, 1], [0, 1, 1]]), (4,1))
-    activationHIGH = np.tile(np.array([[1, 0], [0, 1], [1, 0], [0, 1]]), (4,1))
+                                      [1, 0, 1], [0, 1, 1]]), (5,1))
+    activationHIGH = np.tile(np.array([[1, 0], [0, 1], [1, 0], [0, 1]]), (5,1))
     timedRatesLOW = b2.TimedArray(65*activationLOW*b2.Hz, dt=1*b2.second)
     timedRatesHIGH = b2.TimedArray(65*activationHIGH*b2.Hz, dt=1*b2.second)
     net = b2.Network()
-    wINHIPE, wEXCIPE = -25, 12
-    W = np.random.random(size=(2,3))>0.5
-    W = np.ones((2,3))
+    wINHIPE, wEXCIPE = -35, 12
+    
+    # W = (np.random.random(size=(2, 3)) > 0.5).astype(np.int)
+    W = np.array([[0,0,1], [1,0,1]])
+    print('Before learning:\n%s' % W)
+    
     LOW = Area(3, 'LOW', net, wINHIPE, wEXCIPE, IRPoisson=True,
                recordspikes=True, tointerneurons=True)
     HIGH = Area(2, 'HIGH', net, wINHIPE, wEXCIPE, IRPoisson=True,
@@ -177,10 +180,13 @@ def exp5():
     # Prediction weights are plastic
     connect(HIGH, LOW, W, wEXCIPE, plastic=True)
     
-    net.run(16*b2.second)
-    print(net['s_HIGH_IR_LOW_NPE_'].Wf)
-    print(net['s_HIGH_IR_LOW_interPPE_'].Wf)
-    rplots(LOW['IR'], HIGH['IR'], LOW['NPE'], LOW['PPE'])
+    net.run(20*b2.second)
+    
+    Wf = net['s_HIGH_IR_LOW_NPE'].Wf.variable.get_value()
+    print('After learning:\n%s' % (Wf.reshape(2,3)>.5).astype(np.int))
+    
+    rplots(LOW['IR'], HIGH['IR'], LOW['NPE'], LOW['PPE'], marker=',', 
+           T=(0, 20000))
     plt.show()
     
 

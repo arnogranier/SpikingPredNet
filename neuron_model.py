@@ -74,7 +74,8 @@ def neurons(n:int, behavior:str='pe', name:str='', net:b2.Network=None):
 def synapses(p1:str, p2:str, motif:(None, str, list, tuple, np.ndarray),
              w:float, net:b2.Network, lateralSTDP:bool=False,
              namesup:str='', wmax:float=35, predSTDP:str=None,
-             linkw:bool=False, W_syn:np.ndarray=None, **kwargs):
+             linkw:bool=False, W_syn:np.ndarray=None, lr:float=.01, 
+             twindow:float=1, **kwargs):
     """Add brian2.Synapses between population p1 and p2
 
     Args:
@@ -101,6 +102,10 @@ def synapses(p1:str, p2:str, motif:(None, str, list, tuple, np.ndarray),
                                 Defaults to False.
         W_syn (np.ndarray, optional): intial weight matrix for learning
                                       predictions. Defaults to None.
+        lr (float, optional): learning rate for prediction weight learning
+        twindow (float, optional): the time window in which a pair of post and 
+                                   pre - synaptic spikes must fall to be
+                                   considered for learning 
 
     Returns:
         b2.Synapses: The synaptic complex 
@@ -113,7 +118,7 @@ def synapses(p1:str, p2:str, motif:(None, str, list, tuple, np.ndarray),
                    dapre/dt = -apre/taupre : 1 (event-driven)
                    dapost/dt = -apost/taupost : 1 (event-driven)
                    wmax : volt (shared)'''
-        onpre = '''vm+=wmax*int(w_syn>thetaSTDP)*mV
+        onpre = '''vm+=wmax*int(w_syn>thetaSTDP)
                    apre += Apre
                    w_syn = clip(w_syn+wmax*apost*int(apost<-.1), 0*mV, wmax)'''
         onpost = '''apost += Apost
@@ -122,18 +127,20 @@ def synapses(p1:str, p2:str, motif:(None, str, list, tuple, np.ndarray),
     # Higher IR -> PE synapse and STDP model for prediction weight learning 
     elif predSTDP:
         model = '''w_syn : volt (shared) 
+                   lr : 1 (shared)
+                   twindow : second (shared)
                    lastpost : second 
                    lastpre : second 
                    %s ''' % ('Wf:1' if not linkw else '')
         if predSTDP == '-+':
-            onpre = '''vm+=w_syn*int(Wf>.5)
-                       Wf = clip(Wf+0.01*int((t-lastpost)<20*ms), 0, 1)
+            onpre = '''vm+=w_syn*int(Wf>0.5)
+                       Wf = clip(Wf+lr*int((t-lastpost)<twindow), 0, 1)
                        lastpre = t'''
             onpost = '''lastpost = t'''
         elif predSTDP == '+-':
-            onpre = '''vm+=w_syn*int(Wf>.5)
+            onpre = '''vm+=w_syn*int(Wf>0.5)
                        lastpre = t'''
-            onpost = '''Wf = clip(Wf-0.01*int((t-lastpre)<1*ms), 0, 1)
+            onpost = '''Wf = clip(Wf-lr*int((t-lastpre)<twindow), 0, 1)
                         lastpost = t'''
     
     # Synapse model with no learning 
@@ -142,12 +149,12 @@ def synapses(p1:str, p2:str, motif:(None, str, list, tuple, np.ndarray),
         onpre = 'vm+=w_syn'
         onpost = ''
         
-    s = b2.Synapses(net[p1.name], net[p2.name], model==model,
+    s = b2.Synapses(net[p1.name], net[p2.name], model=model,
                     on_pre=onpre, on_post=onpost, **kwargs,
-                    name='s_%s_%s_%s'%(p1.name, p2.name, namesup))
+                    name='s_%s_%s'%(p1.name, p2.name) + ('_%s'%namesup if namesup else ''))
     
     # Connect synapses 
-    if motif is None or motif == 'all' or predSTDP:
+    if motif is None or motif == 'all' or predSTDP is not None:
         s.connect()
     elif isinstance(motif, str):
         s.connect(motif)
@@ -161,8 +168,12 @@ def synapses(p1:str, p2:str, motif:(None, str, list, tuple, np.ndarray),
     if predSTDP:
         s.lastpost = 0*b2.ms
         s.lastpre = 0*b2.ms
+        s.lr = lr
+        s.twindow = twindow*b2.ms
+        if not linkw:
+            s.Wf = W_syn.flatten()
     elif lateralSTDP:
-        s.wmax = wmax
+        s.wmax = wmax*b2.mV
         
     if net is not None:
         net.add(s)

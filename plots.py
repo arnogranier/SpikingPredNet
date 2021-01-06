@@ -2,16 +2,22 @@ import brian2 as b2
 import matplotlib.pyplot as plt 
 import numpy as np 
 
-def raster_plot(M:b2.SpikeMonitor, marker:str=','):
+def raster_plot(M:b2.SpikeMonitor, marker:str=',', T:tuple=None):
     """Raster plot of a brian2.SpikeMonitor
 
     Args:
-        M (b2.SpikeMonitor): Recording of spikes
-        marker (str): The marker to use in the plot
+        M (b2.SpikeMonitor): Recording of spikes.
+        marker (str; optional): The marker to use in the plot. Defaults to str.
+        T (tuple, optional): (tmin, tmax) to plot.
     Returns:
         list of plt.Line2D: The raster plot
     """
-    return b2.plot(M.t/b2.ms, M.i, marker)
+    
+    pl, = b2.plot(M.t/b2.ms, M.i, marker)
+    plt.gca().set(title=M.name)
+    if T is not None:
+        plt.gca().set(xlim=(T[0], T[1]))
+    return pl
 
 def rateplot2d(M:b2.SpikeMonitor, from_:float, to:float, wh:tuple):
     """2D plot of firing rates. This is particularly useful to visualize 
@@ -32,15 +38,16 @@ def rateplot2d(M:b2.SpikeMonitor, from_:float, to:float, wh:tuple):
     idx = idx.reshape(wh[0],wh[1])
     return plt.imshow(idx)     
 
-def rplots(*args, ma):
+def rplots(*args, marker:str=',', T:tuple=None):
     """Multiple raster plots. Calls raster_plot for each argument
-    
     Args:
+        marker (str, optional): The marker to use in the plot
+        T (tuple, optional): (tmin, tmax) to plot
         Any number of b2.SpikeMonitor
     """
     for arg in args:
         plt.figure()
-        raster_plot(arg)
+        raster_plot(arg, marker=marker, T=T)
 
 def vplots(vname:str, *args):
     """Multiple plots of the evolution of a variable in different
