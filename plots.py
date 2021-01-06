@@ -2,16 +2,16 @@ import brian2 as b2
 import matplotlib.pyplot as plt 
 import numpy as np 
 
-def raster_plot(M:b2.SpikeMonitor):
+def raster_plot(M:b2.SpikeMonitor, marker:str=','):
     """Raster plot of a brian2.SpikeMonitor
 
     Args:
         M (b2.SpikeMonitor): Recording of spikes
-
+        marker (str): The marker to use in the plot
     Returns:
         list of plt.Line2D: The raster plot
     """
-    return b2.plot(M.t/b2.ms, M.i, ',')
+    return b2.plot(M.t/b2.ms, M.i, marker)
 
 def rateplot2d(M:b2.SpikeMonitor, from_:float, to:float, wh:tuple):
     """2D plot of firing rates. This is particularly useful to visualize 
@@ -32,7 +32,7 @@ def rateplot2d(M:b2.SpikeMonitor, from_:float, to:float, wh:tuple):
     idx = idx.reshape(wh[0],wh[1])
     return plt.imshow(idx)     
 
-def rplots(*args):
+def rplots(*args, ma):
     """Multiple raster plots. Calls raster_plot for each argument
     
     Args:
