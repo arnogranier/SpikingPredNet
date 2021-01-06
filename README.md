@@ -4,8 +4,6 @@ This repository holds the code associated with my master thesis for the Neural S
 The full master thesis __Predictive processing as a theory of cortical computation__ can be found [here](https://drive.google.com/file/d/1UY4GiOLBsKHzSzk6la2VNZtl91XkbIIw/view?usp=sharing). <br>
 We propose here an implementation of a basic version of __predictive processing in a spiking neural network__, using the brian2 spiking neural networks simulator \[1\] and the brian2genn interface \[2\] to accelerate computation on GPUs.
 
-# This is still under construction, final version should come around JAN 6
-
 ## Rationale
 Master Thesis' Abstract:<br>
 _In this work I discuss the question of understanding cortical computation and review what I think is the most promising approach of this question to date: the predictive processing framework. In this framework, the computational goal of the neocortex is free energy or prediction error minimization, and this goal is realized by hierarchical message passing and local computation in cortical microcircuitry. Many aspects of cognition have been found to be coherent with predictive processing, and the consistency of this theory with respect to experimental neuroscience data is actively investigated. The principles of the predictive processing framework, interpreted as a theory of cortical computation, would bridge the gap between the levels of neuronal activity and cognition or intelligence; and the construction of artificial systems following the same principles could lead to human- or mammal-like artificial intelligence. At the end of this work, I propose an embryo of implementation of these principles in a spiking neural network with learning and structure inspired from the neocortex._
